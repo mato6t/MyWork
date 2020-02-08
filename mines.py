@@ -7,6 +7,7 @@ This is a temporary script file.
 #python ./dice.py
 import sys
 import random
+import json
 
 def getMines(mines, rows, column):
     list_mines=[]
@@ -48,38 +49,7 @@ def endGame():
     global a
     a=0
     return a
-    
-rows=int(input('how many rows? '))
-columns = int(input('how many columns? '))
-num_mines = int(input('how many mines? '))
-mines_list=getMines(num_mines,rows,columns)
-number_list = getNumbers(mines_list,rows, columns)
-if rows*columns<num_mines:
-    print('mines more than blocks')
-    sys.exit()
-flaged=[]
-opened=[]
-for i in range(rows+1):
-    opened.append([])
-    for j in range(columns+1):
-        opened[i].append(9)
-a=1
-for i in range(rows+1):
-    for j in range(columns+1):
-        if i==0:
-            print(str(j)+' ', end='')
-        else:
-            if j==0:
-                print(str(i)+' ',end='')
-            else:
-                if [i,j] in flaged:
-                    print('! ', end='') 
-                elif opened[i][j] != 9 :
-                    print(opened[i][j], end='')
-                else:
-                    print('P ', end='')
-    print('')
-def open(row, column, opened, number_list, rows, columns):
+def openSquare(row, column, opened, number_list, rows, columns):
     l=[]
     if row +1 <= rows and opened[row+1][column]==9:
         for i in range(6):
@@ -140,39 +110,10 @@ def open(row, column, opened, number_list, rows, columns):
                
  
     return opened, l
-lost=0
-while a:
-    num_opened = 0
-    action = input('exit = press any key or click=1 or flag=2? ')
-    if action != '1' and action != '2':
-        action=input('Do you really want to exit? Yes = 1 ')
-        if action!='1':
-            pass
-        else:
-            break
-    row = int(input('row '))
-    column = int(input('column '))
-    if action == '2':
-        flaged.append([row,column])
-    elif action == '1':
-        if [row, column] in mines_list:
-            opened[row][column]='B '
-            endGame()
-            lost=1
-        else:
-            for i in range(9):
-                if [row,column] in number_list[i]:
-                    opened[row][column]=str(i)+' '
-                    if i==0:
-                        opened,zero_list = open(row, column, opened, number_list, rows, columns)
-                        while len(zero_list)!=0:
-                            opened,another_zero_list = open(int(zero_list[0][0]),int(zero_list[0][1]), opened, number_list, rows, columns)
-                            
-                            for item in another_zero_list:
-                                if item not in zero_list:
-                                    zero_list.append(item)
-                            zero_list.pop(0)
-                    break
+
+
+def display(rows, columns, flaged, opened):
+    num_opened=0
     for i in range(rows+1):
         for j in range(columns+1):
             if i==0:
@@ -190,6 +131,95 @@ while a:
                     else:
                         print('P ', end='')
         print('')
+    return num_opened
+
+
+start = input('new=1, continue = 0')
+if start == '0':
+    with open('rows.txt') as json_file:
+        rows=json.load(json_file)
+    with open('columns.txt') as json_file:
+        columns=json.load(json_file)
+    with open('flaged.txt') as json_file:
+        flaged=json.load(json_file)
+    with open('opened.txt') as json_file:
+        opened=json.load(json_file)
+    with open('mines_list.txt') as json_file:
+        mines_list=json.load(json_file)
+    with open('number_list.txt') as json_file:
+        number_list=json.load(json_file)
+    
+else:
+    rows=int(input('how many rows? '))
+    columns = int(input('how many columns? '))
+    num_mines = int(input('how many mines? '))
+    mines_list=getMines(num_mines,rows,columns)
+    number_list = getNumbers(mines_list,rows, columns)
+    if rows*columns<num_mines:
+        print('mines more than blocks')
+        sys.exit()
+    flaged=[]
+    opened=[]
+    for i in range(rows+1):
+        opened.append([])
+        for j in range(columns+1):
+            opened[i].append(9)
+
+a=1
+num_opened=display(rows, columns, flaged, opened)
+    
+
+lost=0
+while a:
+    
+    action = input('exit = press any key or click=1 or flag=2? ')
+    if action != '1' and action != '2':
+        action=input('Do you really want to exit? Yes = 1 ')
+        if action!='1':
+            continue
+        else:
+            with open('opened.txt','w') as outfile:
+                json.dump(opened,outfile)
+            with open('mines_list.txt','w') as outfile:
+                json.dump(mines_list,outfile)
+            with open('rows.txt','w') as outfile:
+                json.dump(rows,outfile)
+            with open('columns.txt','w') as outfile:
+                json.dump(columns,outfile)
+            with open('flaged.txt','w') as outfile:
+                json.dump(flaged,outfile)
+            with open('number_list.txt','w') as outfile:
+                json.dump(number_list,outfile)
+            
+            break
+    row = int(input('row '))
+    if row > rows:
+        continue
+    column = int(input('column '))
+    if column > columns:
+        continue
+    if action == '2':
+        flaged.append([row,column])
+    elif action == '1':
+        if [row, column] in mines_list:
+            opened[row][column]='B '
+            endGame()
+            lost=1
+        else:
+            for i in range(9):
+                if [row,column] in number_list[i]:
+                    opened[row][column]=str(i)+' '
+                    if i==0:
+                        opened,zero_list = openSquare(row, column, opened, number_list, rows, columns)
+                        while len(zero_list)!=0:
+                            opened,another_zero_list = openSquare(int(zero_list[0][0]),int(zero_list[0][1]), opened, number_list, rows, columns)
+                            
+                            for item in another_zero_list:
+                                if item not in zero_list:
+                                    zero_list.append(item)
+                            zero_list.pop(0)
+                    break
+    num_opened = display(rows, columns, flaged, opened)
     if num_opened+num_mines==columns*rows and not lost:
         print('you won')
     if lost:
